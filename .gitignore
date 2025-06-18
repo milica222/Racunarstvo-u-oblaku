@@ -1,0 +1,15 @@
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Virtual environment
+venv/
+
+# Environment variables
+.env
+
+# Docker artifacts
+*.pid
+
+# VS Code settings (optional, if you're using VS Code)
+.vscode/
