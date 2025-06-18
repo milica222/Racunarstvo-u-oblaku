@@ -11,3 +11,16 @@ Nakon što izvršite komande navedene iznad, aplikaciji možete pristupiti na sl
 
 1. http://localhost:8000
 2. http://localhost:8000/docs 
+
+# Drugi domaći
+
+Komande za pokretanje aplikacije pomoću Docker-a:
+
+```bash
+docker-compose up
+```
+
+Nakon što izvršite komande navedene iznad, aplikaciji možete pristupiti na sledećim linkovima:
+
+1. http://localhost:8000
+2. http://localhost:8000/docs 
