@@ -1,8 +1,0 @@
-docker build -t milicavasovic222/osnove-cwl .
-
-docker tag milicavasovic222/osnove-cwl milicavasovic222/osnove-cwl
-docker push milicavasovic222/osnove-cwl
-
-pip install cwltool 
-
-cwltool --no-container --outdir ./results workflow.cwl inputs.yaml
