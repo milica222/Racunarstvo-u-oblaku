@@ -1,0 +1,5 @@
+csv_input:
+  class: File
+  path: HousingData.csv
+target_column: "MEDV"
+train_pct: 0.8
