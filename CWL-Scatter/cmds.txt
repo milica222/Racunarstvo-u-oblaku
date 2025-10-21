@@ -1,0 +1,10 @@
+docker build -t milicavasovic222/cwl-scatter .
+
+docker tag milicavasovic222/cwl-scatter milicavasovic222/cwl-scatter
+docker push milicavasovic222/cwl-scatter
+
+pip install cwltool 
+
+cwltool  workflow.cwl inputs.yaml
+cwltool  --outdir ./results workflow.cwl inputs.yaml
+cwltool --no-container --outdir ./results workflow.cwl inputs.yaml
