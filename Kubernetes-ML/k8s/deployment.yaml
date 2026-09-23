@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wine-ml-api
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: wine-ml-api
+  template:
+    metadata:
+      labels:
+        app: wine-ml-api
+    spec:
+      containers:
+        - name: wine-ml-api
+          image: __IMAGE__
+          ports:
+            - containerPort: 5000
+          envFrom:
+            - configMapRef:
+                name: wine-ml-config
+          volumeMounts:
+            - name: storage
+              mountPath: /data
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: wine-ml-storage
