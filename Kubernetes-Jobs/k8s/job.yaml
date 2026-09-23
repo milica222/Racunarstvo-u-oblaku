@@ -1,0 +1,40 @@
+apiVersion: batch/v1
+kind: Job
+
+metadata:
+  name: cross-validation
+
+spec:
+  completions: __K_FOLDS__
+  parallelism: __K_FOLDS__
+  completionMode: Indexed
+  template:
+    spec:
+      containers:
+        - name: cross-validation
+          image: python:3.12-slim
+          command:
+            - sh
+            - -c
+            - |
+              pip install --no-cache-dir pandas numpy scikit-learn &&
+              python /app/main.py
+          envFrom:
+            - configMapRef:
+                name: cv-config
+          volumeMounts:
+            - name: code
+              mountPath: /app
+              readOnly: true
+            - name: dataset
+              mountPath: /data
+              readOnly: true
+      volumes:
+        - name: code
+          configMap:
+            name: cv-code
+        - name: dataset
+          configMap:
+            name: cv-data
+      restartPolicy: Never
+  backoffLimit: 2

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  name: cv-config
+
+data:
+  DATA_FILE: "/data/HousingData.csv"
+  FEATURES: "CRIM,ZN,INDUS,CHAS,NOX,RM,AGE,DIS,RAD,TAX,PTRATIO,B,LSTAT"
+  TARGET: "MEDV"
+  K_FOLDS: "5"
+  RANDOM_STATE: "42"
