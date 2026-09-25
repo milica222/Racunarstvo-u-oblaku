@@ -39,7 +39,7 @@ pip install cwltool
 cwltool --outdir ./results workflow.cwl inputs.yaml
 ```
 
-Workflow ima dva koraka: `processing_data` deli `HousingData.csv` na train i test skup (80/20, kolona `MEDV` je target), a `training` nad njima trenira model i upisuje metrike.
+Workflow ima dva koraka: `processing_data` čisti `HousingData.csv` (izbacuje outlier-e i popunjava prazna polja prosekom kolone), a `training` taj skup deli na train i test (80/20, kolona `MEDV` je target), trenira linearnu regresiju i upisuje RMSE u `metrics.txt`.
 
 Ako ne želite da se koristi Docker image, workflow se može pokrenuti i lokalno, pod uslovom da su `pandas` i `scikit-learn` instalirani:
 
@@ -151,3 +151,23 @@ curl -X POST http://<NODE_IP>:30081/predict \
 ```
 
 Poziv `/train` trenira `MLPClassifier` i upisuje model na `/data/model.joblib`, pa ga zato treba pozvati pre `/predict`. Uz `target`, mogu se proslediti i `test_size`, `hidden_layer_sizes`, `max_iter` i `random_state`.
+
+# Sedmi domaći (12 Factor App)
+
+Analiza jedne stvarne aplikacije (chatbot servis) kroz svih 12 faktora nalazi se u fajlu [`12-Factor-App/12-factor-app.md`](12-Factor-App/12-factor-app.md). Za svaki faktor je opisano kako je trenutno rešen i šta bi moglo da se poboljša.
+
+# Osmi domaći (ZooKeeper)
+
+Tri Spring Boot servera se povezuju na ZooKeeper, koji bira lidera među njima. Kada se na bilo koji server pošalje CSV fajl (`PUT /model`), zahtev ide lideru, lider trenira model i šalje ga svim ostalim živim serverima, pa svaki server može da vrati predikciju (`POST /predict`).
+
+Komande za pokretanje:
+
+```bash
+cd Zookepeer/zookeeper-demo-master
+
+docker compose up --build
+```
+
+Serveri su dostupni na portovima `8081`, `8082` i `8083`, a Swagger na http://localhost:8081/swagger-ui.html.
+
+Primeri za treniranje i predikciju, kao i CSV fajlovi za testiranje (`samples/`), opisani su u [`Zookepeer/zookeeper-demo-master/README.md`](Zookepeer/zookeeper-demo-master/README.md).

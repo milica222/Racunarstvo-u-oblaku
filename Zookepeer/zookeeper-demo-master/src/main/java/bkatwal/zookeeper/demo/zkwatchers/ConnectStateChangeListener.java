@@ -4,15 +4,16 @@ import static bkatwal.zookeeper.demo.util.ZkDemoUtil.getHostPostOfServer;
 import static bkatwal.zookeeper.demo.util.ZkDemoUtil.isEmpty;
 
 import bkatwal.zookeeper.demo.api.ZkService;
-import bkatwal.zookeeper.demo.model.Person;
+// import bkatwal.zookeeper.demo.model.Person;
 import bkatwal.zookeeper.demo.util.ClusterInfo;
-import bkatwal.zookeeper.demo.util.DataStorage;
-import java.util.List;
+// import bkatwal.zookeeper.demo.util.DataStorage;
+// import java.util.List;
+import bkatwal.zookeeper.demo.util.MlModel;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.I0Itec.zkclient.IZkStateListener;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
-import org.springframework.web.client.RestTemplate;
+// import org.springframework.web.client.RestTemplate;
 
 /** @author "Bikas Katwal" 02/04/19 */
 @Slf4j
@@ -20,7 +21,6 @@ import org.springframework.web.client.RestTemplate;
 public class ConnectStateChangeListener implements IZkStateListener {
 
   private ZkService zkService;
-  private RestTemplate restTemplate = new RestTemplate();
 
   @Override
   public void handleStateChanged(KeeperState state) throws Exception {
@@ -31,8 +31,7 @@ public class ConnectStateChangeListener implements IZkStateListener {
   public void handleNewSession() throws Exception {
     log.info("connected to zookeeper");
 
-    // sync data from master
-    syncDataFromMaster();
+    MlModel.syncFromMaster();
 
     // add new znode to /live_nodes to make it live
     zkService.addToLiveNodes(getHostPostOfServer(), "cluster node");
@@ -57,17 +56,5 @@ public class ConnectStateChangeListener implements IZkStateListener {
   @Override
   public void handleSessionEstablishmentError(Throwable error) throws Exception {
     log.info("could not establish session");
-  }
-
-  private void syncDataFromMaster() {
-    // BKTODO need try catch here for session not found
-    if (getHostPostOfServer().equals(ClusterInfo.getClusterInfo().getMaster())) {
-      return;
-    }
-    String requestUrl;
-    requestUrl = "http://".concat(ClusterInfo.getClusterInfo().getMaster().concat("/persons"));
-    List<Person> persons = restTemplate.getForObject(requestUrl, List.class);
-    DataStorage.getPersonListFromStorage().clear();
-    DataStorage.getPersonListFromStorage().addAll(persons);
   }
 }

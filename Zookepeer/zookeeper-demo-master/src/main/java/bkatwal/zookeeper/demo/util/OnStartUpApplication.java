@@ -8,21 +8,21 @@ import static bkatwal.zookeeper.demo.util.ZkDemoUtil.getHostPostOfServer;
 import static bkatwal.zookeeper.demo.util.ZkDemoUtil.isEmpty;
 
 import bkatwal.zookeeper.demo.api.ZkService;
-import bkatwal.zookeeper.demo.model.Person;
-import java.util.List;
+// import bkatwal.zookeeper.demo.model.Person;
+// import java.util.List;
+// import java.util.Map;
 import org.I0Itec.zkclient.IZkChildListener;
 import org.I0Itec.zkclient.IZkStateListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
+// import org.springframework.web.client.RestTemplate;
 
 /** @author "Bikas Katwal" 26/03/19 */
 @Component
 public class OnStartUpApplication implements ApplicationListener<ContextRefreshedEvent> {
 
-  private RestTemplate restTemplate = new RestTemplate();
   @Autowired private ZkService zkService;
 
   @Autowired private IZkChildListener allNodesChangeListener;
@@ -61,8 +61,7 @@ public class OnStartUpApplication implements ApplicationListener<ContextRefreshe
         }
       }
 
-      // sync person data from master
-      syncDataFromMaster();
+      MlModel.syncFromMaster();
 
       // add child znode under /live_node, to tell other servers that this server is ready to serve
       // read request
@@ -83,16 +82,5 @@ public class OnStartUpApplication implements ApplicationListener<ContextRefreshe
     } catch (Exception e) {
       throw new RuntimeException("Startup failed!!", e);
     }
-  }
-
-  private void syncDataFromMaster() {
-    // BKTODO need try catch here for session not found
-    if (getHostPostOfServer().equals(ClusterInfo.getClusterInfo().getMaster())) {
-      return;
-    }
-    String requestUrl;
-    requestUrl = "http://".concat(ClusterInfo.getClusterInfo().getMaster().concat("/persons"));
-    List<Person> persons = restTemplate.getForObject(requestUrl, List.class);
-    DataStorage.getPersonListFromStorage().addAll(persons);
   }
 }

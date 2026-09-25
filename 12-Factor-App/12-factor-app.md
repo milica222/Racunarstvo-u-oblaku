@@ -12,7 +12,7 @@ Zavisnosti backend-a navedene su u requirements.txt, dok se paketi React fronten
 
 ## Faktor 3: Config
 
-Podešavanja koja se razlikuju po okruženjima stoje u konfiguracionom fajlu koji je deo repozitorijuma, dok tajne vrednosti, odnosno lozinke i API ključevi, idu u poseban secrets fajl koji se ne komituje. Zahvaljujući tome nijedna tajna ne završava u Git istoriji, a svaka instanca pri raspoređivanju dobija svoj secrets fajl sa vrednostima za to okruženje. Strogo tumačenje ovog faktora ipak traži da konfiguracija stoji u promenljivama okruženja, pa bi sledeći korak bio da se vrednosti učitavaju odatle, odnosno iz ConfigMap-a i Secret-a kada aplikacija ide na Kubernetes.
+Podešavanja koja se razlikuju po okruženjima stoje u konfiguracionom fajlu koji je deo repozitorijuma, dok tajne vrednosti, odnosno lozinke i API ključevi, idu u poseban secrets fajl koji se ne komituje. Zahvaljujući tome nijedna tajna ne završava u Git istoriji. Secrets fajlovi se čuvaju na Rancher-u i kače se na instancu kao fajl, pa svako okruženje dobija svoje vrednosti, a aplikacija ih pročita kad se pokrene. Faktor kaže da konfiguracija treba da ide kroz promenljive okruženja, a ne kroz fajlove. Na ovaj nacin, tajne nisu u kodu i menjaju se bez novog build-a. Ako bi se išlo do kraja, iste vrednosti bi mogle da se proslede kao env promenljive, a i običan konfiguracioni fajl bi mogao da pređe na Rancher umesto da stoji u repozitorijumu.
 
 ## Faktor 4: Backing services
 
@@ -20,11 +20,11 @@ Aplikacija koristi dve baze, odnosno PostgreSQL za podatke same aplikacije i Cos
 
 ## Faktor 5: Build, release, run
 
-Build i objavljivanje idu kroz podešen CI/CD pipeline, koji nad svakom izmenom prvo pokrene testove i tek ako oni prođu nastavi ka release-u. Svaki release nosi svoj broj, pa se tačno zna koja verzija koda radi na kom okruženju, a povratak na prethodno stanje svodi se na objavljivanje starijeg broja. Kod se nikada ne menja na samom serveru u toku rada, jer bi takva izmena nestala pri sledećem raspoređivanju i razlikovala bi se od onoga što stoji u repozitorijumu.
+Build i objavljivanje idu kroz podešen CI/CD pipeline, koji nad svakom izmenom prvo pokrene testove i tek ako oni prođu nastavi ka release-u. Svaki release nosi svoj broj, pa se tačno zna koja verzija koda radi na kom okruženju, a povratak na prethodno stanje svodi se na objavljivanje starijeg broja. Kod se nikad ne menja ručno direktno na serveru, jer bi se ta izmena izgubila na sledećem deploy-u, a i na serveru bi radio kod kog nema u repozitorijumu.
 
 ## Faktor 6: Processes
 
-Svaka instanca aplikacije radi nezavisno i ne drži razgovor u svojoj memoriji, nego se svaki chat upisuje u bazu i odatle ponovo čita. Zahvaljujući tome dva uzastopna pitanja istog korisnika može da opsluži bilo koja instanca, jer sve gledaju u iste podatke u Postgres-u i Cosmos DB-u. Sve što bi se upisalo u lokalni fajl sistem kontejnera smatra se privremenim, jer nestaje čim se instanca ugasi ili bude zamenjena novom. Jedino lokalno stanje je keš kredencijala koje korisnik unese za povezivanje na MCP servere, pa bi i njega trebalo premestiti u deljeno skladište da bi svaka instanca mogla da ga pročita.
+Svaka instanca aplikacije radi nezavisno i ne drži razgovor u svojoj memoriji, nego se svaki chat upisuje u bazu i odatle ponovo čita. Zahvaljujući tome dva uzastopna pitanja istog korisnika može da opsluži bilo koja instanca, jer sve gledaju u iste podatke u Postgres-u i Cosmos DB-u. Sve što bi se upisalo u lokalni fajl sistem kontejnera smatra se privremenim, jer nestaje čim se instanca ugasi ili bude zamenjena novom. 
 
 ## Faktor 7: Povezivanje preko porta (Port binding)
 
@@ -40,7 +40,7 @@ Podizanje instance traje oko pet do deset minuta, a i posle toga je potrebno jo�
 
 ## Faktor 10: Podudarnost razvoja i produkcije (Dev/prod parity)
 
-Lokalno se kod pokreće direktno, bez Docker-a, ali nad dev instancama istih servisa koje aplikacija koristi i na drugim okruženjima. Razlika u alatima ipak postoji, jer se lokalno ne radi u kontejneru, pa se ponašanje koje će biti u produkciji najpouzdanije proverava tek na stejdžu, a pokretanje lokalnog okruženja kroz Docker bi taj jaz zatvorilo. Izmene se puštaju u produkciju otprilike na svake dve nedelje, ponekad češće ili ređe, pa razmak između pisanja koda i objavljivanja ostaje mali. Dev instanca koristi dev bazu, dok stejdž i produkcija dele produkcionu bazu.
+Ovaj faktor traži da okruženje u kojem se kod piše i testira bude što sličnije produkciji, da ne bi bilo iznenađenja kad izmena stigne do korisnika. Kod nas postoji dev instanca aplikacije koja se sama ažurira čim se kod push-uje na dev granu, pa se izmena posle par minuta može isprobati kroz browser, bez pokretanja bilo čega lokalno. Dev instanca radi na isti način kao stejdž i produkcija, samo nad svojom, dev bazom, pa se već tu vidi kako će se izmena ponašati. Nova verzija ide u produkciju otprilike na svake dve nedelje, tako da ne prođe mnogo vremena od pisanja koda do trenutka kad ga korisnici koriste. Jedina veća razlika je što stejdž i produkcija koriste istu bazu, pa bi bilo bolje da i stejdž ima svoju.
 
 ## Faktor 11: Logovi (Logs)
 

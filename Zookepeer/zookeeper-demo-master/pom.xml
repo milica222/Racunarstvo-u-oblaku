@@ -15,7 +15,8 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
-    <swagger.version>2.5.0</swagger.version>
+    <swagger.version>2.9.2</swagger.version>
+    <weka.version>3.8.6</weka.version>
   </properties>
 
   <parent>
@@ -107,6 +108,12 @@
       <artifactId>springfox-bean-validators</artifactId>
       <version>${swagger.version}</version>
       <scope>compile</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>nz.ac.waikato.cms.weka</groupId>
+      <artifactId>weka-stable</artifactId>
+      <version>${weka.version}</version>
     </dependency>
 
     <dependency>

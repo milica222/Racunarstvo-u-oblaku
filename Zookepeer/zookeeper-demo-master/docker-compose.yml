@@ -1,0 +1,49 @@
+version: "3.8"
+
+services:
+  zookeeper:
+    image: zookeeper:3.4.14
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+
+  ml-server-1:
+    build: .
+    container_name: ml-server-1
+    environment:
+      SERVER_PORT: 8081
+      ZK_URL: zookeeper:2181
+      LEADER_ALGO: 2
+    ports:
+      - "8081:8081"
+    depends_on:
+      - zookeeper
+    restart: on-failure
+
+  ml-server-2:
+    build: .
+    container_name: ml-server-2
+    environment:
+      SERVER_PORT: 8082
+      ZK_URL: zookeeper:2181
+      LEADER_ALGO: 2
+    ports:
+      - "8082:8082"
+    depends_on:
+      - zookeeper
+      - ml-server-1
+    restart: on-failure
+
+  ml-server-3:
+    build: .
+    container_name: ml-server-3
+    environment:
+      SERVER_PORT: 8083
+      ZK_URL: zookeeper:2181
+      LEADER_ALGO: 2
+    ports:
+      - "8083:8083"
+    depends_on:
+      - zookeeper
+      - ml-server-1
+    restart: on-failure
