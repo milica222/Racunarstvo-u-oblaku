@@ -1,7 +1,7 @@
 cwlVersion: v1.2
 class: CommandLineTool
 
-baseCommand: ["python", "app/training.py"]
+baseCommand: ["python", "/app/training.py"]
 
 hints:
     DockerRequirement:

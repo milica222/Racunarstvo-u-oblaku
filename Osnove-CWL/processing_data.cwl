@@ -1,7 +1,7 @@
 cwlVersion: v1.2
 class: CommandLineTool
 
-baseCommand: ["python", "app/processing_data.py"]
+baseCommand: ["python", "/app/processing_data.py"]
 
 hints:
   DockerRequirement:

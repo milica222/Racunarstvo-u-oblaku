@@ -1,51 +1,51 @@
 # 12 Factor App na primeru chatbot servisa
 
-Primer aplikacije je ChatBot servis, odnosno REST API u Flask-u koji prima poruke korisnika i vraća odgovore. Istoriju razgovora čuva u PostgreSQL bazi, aktivne sesije u Redis-u, a odgovore dobija pozivanjem eksternog LLM API-ja. Servis se pakuje u Docker image i pokreće na Kubernetes klasteru u više instanci.
+Primer je chatbot aplikacija koju čine React frontend, Python backend i middleware sloj, a korisniku omogućava razgovor, povezivanje na MCP servere i obradu dokumenata. Podaci same aplikacije čuvaju se u PostgreSQL bazi, istorija poruka u Cosmos DB-u, dok obrada dokumenata radi kao zaseban servis sa svojim Dockerfile-om. Aplikacija je podignuta u tri okruženja, odnosno dev, stejdž i produkciju, a izmene do njih stižu kroz CI/CD pipeline.
 
 ## Faktor 1: Codebase
 
-Ceo chatbot servis stoji u jednom Git repozitorijumu iz kojeg nastaju sva okruženja, to jest razvojno, test i produkciono. Isti commit se raspoređuje na sve instance, pa se okruženja razlikuju samo po konfiguraciji, a nikako po kodu. Ako bi se kasnije dodao servis za analitiku razgovora, on bi dobio svoj repozitorijum jer je reč o zasebnoj aplikaciji.
+Ceo projekat stoji u jednom Git repozitorijumu u kojem su zajedno frontend, backend i middleware, pa se sve tri celine verzionišu na istom mestu. Iz te iste kodne baze podižu se tri instance aplikacije, odnosno razvojna, stejdž i produkciona. Instance se razlikuju isključivo po konfiguraciji, dok je kod svuda isti, pa ono što je provereno na stejdžu radi jednako i u produkciji.
 
 ## Faktor 2: Dependencies
 
-Sve biblioteke su izričito navedene u requirements.txt, gde stoje flask, psycopg2, redis i klijent za LLM API. Aplikacija se nikada ne oslanja na pakete koji slučajno postoje na sistemu, pa Dockerfile instalira tačno ono što je deklarisano. Novi član tima klonira repozitorijum, pokrene instalaciju zavisnosti i dobije isto okruženje kao i svi ostali.
+Zavisnosti backend-a navedene su u requirements.txt, dok se paketi React frontend-a vode u package.json fajlu. Instalacija se izvršava u Dockerfile-u komandom pip install, pa image sadrži tačno ono što je deklarisano i ne oslanja se na pakete zatečene na serveru. Zbog toga novi član tima klonira repozitorijum, pokrene build i dobije isto okruženje kao i svi ostali. Lock fajlovi se zasad ne koriste, odnosno verzije nisu do kraja zaključane, što je prva stvar koju bi vredelo dodati da bi svaki build bio potpuno identičan.
 
 ## Faktor 3: Config
 
-API ključ za LLM, adresa baze i adresa Redis-a stoje u promenljivama okruženja, a ne u kodu. Isti image se zbog toga pokreće i lokalno i u produkciji, gde vrednosti stižu iz ConfigMap-a i Secret-a. Kada bi ključ bio upisan u kod, svaka izmena bi tražila novi build, uz stalan rizik da tajna završi u repozitorijumu.
+Podešavanja koja se razlikuju po okruženjima stoje u konfiguracionom fajlu koji je deo repozitorijuma, dok tajne vrednosti, odnosno lozinke i API ključevi, idu u poseban secrets fajl koji se ne komituje. Zahvaljujući tome nijedna tajna ne završava u Git istoriji, a svaka instanca pri raspoređivanju dobija svoj secrets fajl sa vrednostima za to okruženje. Strogo tumačenje ovog faktora ipak traži da konfiguracija stoji u promenljivama okruženja, pa bi sledeći korak bio da se vrednosti učitavaju odatle, odnosno iz ConfigMap-a i Secret-a kada aplikacija ide na Kubernetes.
 
 ## Faktor 4: Backing services
 
-PostgreSQL, Redis i LLM API su za chatbot obični resursi kojima pristupa preko adrese iz konfiguracije. Zamena lokalne baze upravljanom bazom u oblaku svodi se na promenu jedne promenljive, bez ijedne izmene u kodu. Isto važi i za jezički model, odnosno prelazak na drugog provajdera menja konfiguraciju i klijentski adapter, dok logika razgovora ostaje ista.
+Aplikacija koristi dve baze, odnosno PostgreSQL za podatke same aplikacije i Cosmos DB za istoriju poruka i slične zapise. Obe su za aplikaciju samo prikačeni resursi, jer joj adrese i kredencijali stižu iz secrets fajla, pa se zamena instance svodi na promenu tih vrednosti bez ijedne izmene u kodu. Lokalni razvoj radi nad dev instancom baze, dok stejdž i produkcija koriste produkcionu bazu. Razdvajanje bi bilo čistije kada bi i stejdž dobio svoju instancu, jer bi tada testiranje bilo potpuno odvojeno od stvarnih podataka.
 
-## Faktor 5: Izgradnja, objavljivanje, izvršavanje (Build, release, run)
+## Faktor 5: Build, release, run
 
-Build faza od koda i zavisnosti pravi Docker image, release faza tom image-u pridružuje konfiguraciju okruženja, a run faza pokreće kontejnere. Svaki release nosi svoju oznaku verzije, pa je povratak na prethodno stanje samo vraćanje na stariji tag. Kod se nikada ne menja u toku rada, jer bi takva izmena nestala pri sledećem pokretanju kontejnera.
+Build i objavljivanje idu kroz podešen CI/CD pipeline, koji nad svakom izmenom prvo pokrene testove i tek ako oni prođu nastavi ka release-u. Svaki release nosi svoj broj, pa se tačno zna koja verzija koda radi na kom okruženju, a povratak na prethodno stanje svodi se na objavljivanje starijeg broja. Kod se nikada ne menja na samom serveru u toku rada, jer bi takva izmena nestala pri sledećem raspoređivanju i razlikovala bi se od onoga što stoji u repozitorijumu.
 
-## Faktor 6: Procesi (Processes)
+## Faktor 6: Processes
 
-Svaka instanca chatbota radi bez stanja, to jest istorija razgovora i podaci o sesiji čuvaju se u bazi i Redis-u, a ne u memoriji procesa. Zahvaljujući tome dva uzastopna pitanja istog korisnika mogu da završe na različitim instancama, a odgovor će biti jednak. Sve što se upiše u lokalni fajl sistem smatra se privremenim jer nestaje kada se kontejner ugasi.
+Svaka instanca aplikacije radi nezavisno i ne drži razgovor u svojoj memoriji, nego se svaki chat upisuje u bazu i odatle ponovo čita. Zahvaljujući tome dva uzastopna pitanja istog korisnika može da opsluži bilo koja instanca, jer sve gledaju u iste podatke u Postgres-u i Cosmos DB-u. Sve što bi se upisalo u lokalni fajl sistem kontejnera smatra se privremenim, jer nestaje čim se instanca ugasi ili bude zamenjena novom. Jedino lokalno stanje je keš kredencijala koje korisnik unese za povezivanje na MCP servere, pa bi i njega trebalo premestiti u deljeno skladište da bi svaka instanca mogla da ga pročita.
 
 ## Faktor 7: Povezivanje preko porta (Port binding)
 
-Servis sam diže HTTP server i osluškuje na portu koji dobija iz promenljive okruženja, pa mu nije potreban spoljni aplikacioni server. U kontejneru se izlaže port 5000, a Kubernetes Service ga dalje objavljuje ostatku klastera. Na taj način i sam chatbot može da bude prateći servis nekoj drugoj aplikaciji, koja ga poziva preko njegove adrese.
+Backend se pokreće komandom python main.py i sam diže svoj HTTP server, pa mu nije potreban spoljni aplikacioni server ispred sebe. Lokalno osluškuje na portu 7000, dok podignute instance imaju svoj domen preko kojeg su dostupne. Frontend u svojoj konfiguraciji drži podatak o tome koju instancu backend-a poziva, odnosno lokalnu, dev, stejdž ili produkcionu, pa se prebacivanje svodi na promenu te vrednosti.
 
 ## Faktor 8: Konkurentnost (Concurrency)
 
-Veći broj poruka rešava se dodavanjem instanci, odnosno povećanjem broja replika, umesto kupovinom jačeg servera. Web proces opslužuje HTTP zahteve, dok poseban worker proces radi sporije poslove poput indeksiranja razgovora i slanja izveštaja. Pošto procesi nemaju stanje, load balancer slobodno šalje zahtev bilo kojoj instanci.
+Backend opslužuje zahteve sa tri radna toka, odnosno tri workera unutar servisa, pa se veći broj korisnika prihvata paralelno umesto da sve ide jedan za drugim. Obrada dokumenata je izdvojena u zaseban servis sa svojim Dockerfile-om i radi nezavisno, tako da spori poslovi ne usporavaju odgovaranje na poruke. Kada saobraćaj poraste, kapacitet se podiže dodavanjem radnih procesa i instanci, a ne prelaskom na jači server. Pošto instance ne čuvaju stanje razgovora, zahtev slobodno može da završi na bilo kojoj od njih.
 
 ## Faktor 9: Jednokratnost (Disposability)
 
-Instanca se podiže za nekoliko sekundi i odmah je spremna da prima saobraćaj, što je važno kada broj korisnika naglo poraste. Na signal za gašenje servis prestaje da prima nove zahteve, završi one koji su u toku i tek onda se ugasi, pa nijedna poruka ne ostane bez odgovora. Ako proces ipak padne usred obrade, posao ostaje u redu i biće ponovo preuzet.
+Podizanje instance traje oko pet do deset minuta, a i posle toga je potrebno još vremena da se učitaju podaci za MCP servere, pa korisnik koji ih pozove prerano dobija grešku dok se sve ne podesi. To je najveće odstupanje od ovog faktora, jer 12 faktora traži da se instanca digne brzo kako bi restart i skaliranje bili bezbolni. Dobra strana je što posao nije izgubljen kada obrada dokumenta pukne, odnosno korisnik dobija grešku i mogućnost da pokuša ponovo. Sledeći korak bio bi skraćivanje starta i uvođenje provere spremnosti, tako da instanca počne da prima zahteve tek kada su podaci za MCP učitani.
 
 ## Faktor 10: Podudarnost razvoja i produkcije (Dev/prod parity)
 
-Lokalno se preko docker compose diže ista kombinacija servisa koja radi i u produkciji, to jest PostgreSQL i Redis istih verzija. Tako se izbegava situacija da nešto radi na laptopu, a puca na klasteru zbog druge verzije baze. Razmak u vremenu je takođe mali, jer se izmene objavljuju često, po nekoliko puta nedeljno.
+Lokalno se kod pokreće direktno, bez Docker-a, ali nad dev instancama istih servisa koje aplikacija koristi i na drugim okruženjima. Razlika u alatima ipak postoji, jer se lokalno ne radi u kontejneru, pa se ponašanje koje će biti u produkciji najpouzdanije proverava tek na stejdžu, a pokretanje lokalnog okruženja kroz Docker bi taj jaz zatvorilo. Izmene se puštaju u produkciju otprilike na svake dve nedelje, ponekad češće ili ređe, pa razmak između pisanja koda i objavljivanja ostaje mali. Dev instanca koristi dev bazu, dok stejdž i produkcija dele produkcionu bazu.
 
 ## Faktor 11: Logovi (Logs)
 
-Chatbot ne piše logove u fajlove, nego ih šalje na standardni izlaz, odakle ih preuzima platforma. U Kubernetes-u se čitaju komandom kubectl logs, a odatle se prosleđuju alatu za pretragu i analizu. Zahvaljujući tome ceo jedan razgovor može da se isprati kroz sve instance koristeći identifikator sesije.
+Logovi se ne čuvaju u fajlovima na serveru, nego se skupljaju u Elastic-u, gde se beleži svaki poziv ka aplikaciji i svaki API poziv zajedno sa rezultatom ili stack trace-om greške. Kada se nešto istražuje, pretražuju se najskoriji logovi po identifikatoru korisnika, pa se ceo tok jednog zahteva vidi na jednom mestu i bez ulaska na server. Aplikacija se tako prema logovima ponaša kao prema toku događaja koji samo ispiše, dok se skupljanje, čuvanje i pretraga rešavaju izvan nje.
 
 ## Faktor 12: Administrativni procesi (Admin processes)
 
-Migracija baze, čišćenje starih razgovora i probno slanje poruke pokreću se kao jednokratni procesi iz istog image-a i sa istom konfiguracijom kao i sam servis. U Kubernetes-u je to Job ili izvršavanje komande u već pokrenutom pod-u, gde skripta stoji u repozitorijumu zajedno sa kodom. Na taj način administrativni zadatak uvek radi nad istom verzijom koda koja je trenutno u produkciji.
+Za svaku izmenu baze pravi se migraciona skripta sa SQL upitima, koja stoji u repozitorijumu zajedno sa kodom koji tu izmenu koristi. Sve migracione skripte se pokreću pre podizanja nove verzije na produkciju, pa su baza i kod uvek usklađeni. Pošto migracije idu iz istog repozitorijuma i kroz isti pipeline kao i sam release, administrativni posao se izvršava nad istom verzijom koda koja se objavljuje.
